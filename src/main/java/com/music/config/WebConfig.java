@@ -22,17 +22,17 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new JwtInterceptor())
                 .addPathPatterns("/**") // 拦截一切
-                //  极其关键的终极白名单（千万不要漏掉任何一个斜杠）
+                //  极其关键：加上 /** 通配符，兼容前端的 /api 前缀！
                 .excludePathPatterns(
-                        "/user/login",      // 放行用户登录
-                        "/user/register",   // 放行用户注册
-                        "/admin/login",     // 放行管理员登录
-                        "/music/list",      // 放行获取歌曲列表
-                        "/music/page",      // 放行分页列表
-                        "/music/ai/recommend", // 放行 AI 推荐
-                        "/common/upload",   // 放行文件上传
-                        "/error",           // 放行 Spring 内置错误映射
-                        "/", "/index.html", "/favicon.ico", "/assets/**", "/login", "/admin" // 静态资源兜底
+                        "/**/user/login",      // 放行用户登录
+                        "/**/user/register",   // 放行用户注册
+                        "/**/admin/login",     // 放行管理员登录
+                        "/**/music/list",      // 放行获取歌曲列表
+                        "/**/music/page",      // 放行分页列表
+                        "/**/music/ai/recommend", // 放行 AI 推荐
+                        "/**/common/upload",   // 放行文件上传
+                        "/error",              // 放行 Spring 内置错误
+                        "/", "/index.html", "/favicon.ico", "/assets/**", "/login", "/admin" 
                 );
     }
 }
