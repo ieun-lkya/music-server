@@ -1,0 +1,26 @@
+server:
+  port: 8080 # 后端服务端口
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/echo_music?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    # 🚀 极其关键：这里放的是占位符，保护你的绝对安全！
+    # 本地运行时，请在 IDEA 的 Environment variables 里配置 SPRING_DATASOURCE_PASSWORD=123456
+    password: your_database_password_here
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+aliyun:
+  oss:
+    endpoint: oss-cn-shenzhen.aliyuncs.com
+    bucket-name: ieun-music
+    region: cn-shenzhen

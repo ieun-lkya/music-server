@@ -1,0 +1,76 @@
+package com.music.controller;
+
+import com.music.common.Result;
+import com.music.entity.MusicInfo;
+import com.music.entity.User;
+import com.music.mapper.UserMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+import java.util.Map;
+
+@Slf4j
+@RestController
+@RequestMapping("/user")
+public class UserController {
+
+    @Autowired
+    private UserMapper userMapper;
+
+    // --- 【1. 用户登录/注册系统】 ---
+    
+    @PostMapping("/register")
+    public Result<String> register(@RequestBody User user) {
+        if (user.getUsername() == null || user.getPassword() == null) {
+            return Result.error("账号密码不能为空");
+        }
+        User existUser = userMapper.findByUsername(user.getUsername());
+        if (existUser != null) {
+            return Result.error("账号已被注册，换一个吧");
+        }
+        // 给个默认头像
+        user.setAvatar("https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png");
+        userMapper.insertUser(user);
+        log.info("====== 新用户注册成功: {} ======", user.getUsername());
+        return Result.success("注册成功，请登录！");
+    }
+
+    @PostMapping("/login")
+    public Result<Map<String, Object>> login(@RequestBody User user) {
+        User dbUser = userMapper.findByUsername(user.getUsername());
+        if (dbUser == null || !dbUser.getPassword().equals(user.getPassword())) {
+            return Result.error("账号或密码错误");
+        }
+        dbUser.setPassword(null);
+        // 核心：签发 JWT 令牌
+        String token = com.music.utils.JwtUtils.generateToken(dbUser.getId(), dbUser.getUsername());
+            
+        Map<String, Object> res = new java.util.HashMap<>();
+        res.put("user", dbUser);
+        res.put("token", token);
+            
+        log.info("====== 用户登录成功并签发令牌：{} ======", dbUser.getUsername());
+        return Result.success(res);
+    }
+
+    // --- 【2. 收藏业务系统】 ---
+
+    @PostMapping("/like")
+    public Result<String> likeMusic(@RequestParam("userId") Long userId, @RequestParam("musicId") Long musicId) {
+        userMapper.likeMusic(userId, musicId);
+        return Result.success("收藏成功！");
+    }
+
+    @PostMapping("/unlike")
+    public Result<String> unlikeMusic(@RequestParam("userId") Long userId, @RequestParam("musicId") Long musicId) {
+        userMapper.unlikeMusic(userId, musicId);
+        return Result.success("已取消收藏");
+    }
+
+    @GetMapping("/likes")
+    public Result<List<MusicInfo>> getMyLikes(@RequestParam("userId") Long userId) {
+        List<MusicInfo> likedList = userMapper.getLikedMusicList(userId);
+        return Result.success(likedList);
+    }
+}
