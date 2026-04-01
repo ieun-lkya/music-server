@@ -22,7 +22,7 @@ public class CommentController {
             return Result.error("评论参数不完整！");
         }
         commentMapper.insert(comment);
-        return Result.success();
+        return Result.success(null);  // 成功不需要返回数据，传 null 即可
     }
 
     //  获取某首歌的热评列表接口
