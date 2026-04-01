@@ -14,9 +14,9 @@ public interface CommentMapper {
             "VALUES(#{musicId}, #{userId}, #{content}, NOW())")
     void insert(Comment comment);
 
-    //  极其精妙的联表查询：按点赞数和时间降序排列，这就是"热评"的核心算法！
+    //  修正了极其致命的表名错误：将 user 改为真实的表名 user_info！
     @Select("SELECT c.*, u.username, u.avatar FROM music_comment c " +
-            "LEFT JOIN user u ON c.user_id = u.id " +
+            "LEFT JOIN user_info u ON c.user_id = u.id " +
             "WHERE c.music_id = #{musicId} " +
             "ORDER BY c.likes DESC, c.create_time DESC")
     List<Comment> selectByMusicId(Integer musicId);
