@@ -91,19 +91,21 @@ public class AiRecommendController {
 
             JsonNode root = mapper.readTree(response.getBody());
             String aiResponse = root.path("choices").get(0).path("message").path("content").asText().trim();
-            log.info("🤖 AI 深度思考过程与结果:\n{}", aiResponse);
+            log.info(" AI 深度思考过程与结果:\n{}", aiResponse);
 
             String idContent = "";
             Pattern pattern = Pattern.compile("<result>([\\s\\S]*?)</result>", Pattern.CASE_INSENSITIVE);
             Matcher matcher = pattern.matcher(aiResponse);
+            
             if (matcher.find()) {
                 idContent = matcher.group(1).trim();
             } else {
                 idContent = aiResponse;
             }
 
+            //  极其关键的拦截：一旦发现 NONE，立刻阻断并返回！绝不往下执行！
             if (idContent.toUpperCase().contains("NONE")) {
-                return Result.error("😢 抱歉，曲库中暂未收录合适的歌曲，请尝试换个词或搜歌手~");
+                return Result.error(" 抱歉，曲库中暂未收录合适的歌曲，请尝试换个词或搜歌手~");
             }
 
             String[] idStrings = idContent.replaceAll("[^0-9,]", "").split(",");
@@ -117,7 +119,7 @@ public class AiRecommendController {
             }
 
             if (validIds.isEmpty()) {
-                return Result.error("😢 AI 找不到合适的歌曲，请换个场景描述吧~");
+                return Result.error(" AI 找不到合适的歌曲，请换个场景描述吧~");
             }
 
             String inSql = String.join(",", Collections.nCopies(validIds.size(), "?"));
