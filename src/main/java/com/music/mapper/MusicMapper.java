@@ -38,4 +38,12 @@ public interface MusicMapper {
             "WHERE id=#{id}" +
             "</script>")
     void updateMusic(MusicInfo music);
+
+    // 7. 🚀 接收前端播放脉冲，播放量 +1
+    @org.apache.ibatis.annotations.Update("UPDATE music_info SET play_count = play_count + 1 WHERE id = #{id}")
+    void incrementPlayCount(Integer id);
+
+    // 8. 🚀 抓取全站 Top 10 热歌榜！
+    @org.apache.ibatis.annotations.Select("SELECT * FROM music_info ORDER BY play_count DESC LIMIT 10")
+    List<MusicInfo> selectTopMusic();
 }

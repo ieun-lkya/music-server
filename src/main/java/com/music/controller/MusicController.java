@@ -4,6 +4,7 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.music.common.Result;
 import com.music.entity.MusicInfo;
+import com.music.mapper.MusicMapper;
 import com.music.service.MusicService;
 import lombok.extern.slf4j.Slf4j; // 引入日志注解
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,9 @@ public class MusicController {
 
     @Autowired
     private MusicService musicService;
+
+    @Autowired
+    private MusicMapper musicMapper;
 
     @GetMapping("/list")
     public Result<List<MusicInfo>> getMusicList() {
@@ -71,5 +75,18 @@ public class MusicController {
     public Result<String> updateCover(@RequestParam("id") Long id, @RequestParam("coverUrl") String coverUrl) {
         musicService.updateCover(id, coverUrl);
         return Result.success("封面更新成功！");
+    }
+
+    //  🚀 播放量脉冲接口
+    @PostMapping("/play/{id}")
+    public Result<?> addPlayCount(@PathVariable Integer id) {
+        musicMapper.incrementPlayCount(id);
+        return Result.success(null);
+    }
+
+    //  🚀 热歌榜接口
+    @GetMapping("/top")
+    public Result<List<MusicInfo>> getTopMusic() {
+        return Result.success(musicMapper.selectTopMusic());
     }
 }

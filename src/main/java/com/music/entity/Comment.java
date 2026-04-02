@@ -19,4 +19,12 @@ public class Comment {
     // 联表查询时的冗余字段，方便前端直接展示头像和昵称
     private String username;
     private String avatar;
+    
+    // 树形结构需要的字段
+    private Integer parentId; // 父评论 ID
+    
+    // 下面这两个字段数据库里没有，只用于后端组装楼中楼返回给前端
+    private java.util.List<Comment> replies; // 子评论列表
+    
+    private String targetUsername; // 记录回复的是谁
 }

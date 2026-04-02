@@ -19,4 +19,5 @@ public class MusicInfo {
     private String tags;
     private LocalDateTime createTime;
     private String lyricUrl;
+    private Integer playCount; // 播放量字段
 }

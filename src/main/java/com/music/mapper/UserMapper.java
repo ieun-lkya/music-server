@@ -30,4 +30,8 @@ public interface UserMapper {
             "WHERE ul.user_id = #{userId} " +
             "ORDER BY ul.create_time DESC")
     List<MusicInfo> getLikedMusicList(Long userId);
+
+    // 6. 🚀 统计用户总数 (用于 Admin 大屏)
+    @Select("SELECT COUNT(*) FROM user_info")
+    long countUser();
 }

@@ -11,8 +11,8 @@ import java.util.List;
 @Mapper
 public interface CommentMapper {
     
-    @Insert("INSERT INTO music_comment(music_id, user_id, content, create_time) " +
-            "VALUES(#{musicId}, #{userId}, #{content}, NOW())")
+    @Insert("INSERT INTO music_comment(music_id, user_id, content, parent_id, create_time) " +
+            "VALUES(#{musicId}, #{userId}, #{content}, #{parentId}, NOW())")
     void insert(Comment comment);
 
     //  修正了极其致命的表名错误：将 user 改为真实的表名 user_info！
