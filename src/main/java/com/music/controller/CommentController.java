@@ -31,4 +31,11 @@ public class CommentController {
         List<Comment> list = commentMapper.selectByMusicId(musicId);
         return Result.success(list);
     }
+
+    //  接收前端点赞冲击波
+    @PostMapping("/like/{id}")
+    public Result<?> likeComment(@PathVariable Integer id) {
+        commentMapper.incrementLikes(id);
+        return Result.success(null);
+    }
 }

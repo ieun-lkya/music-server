@@ -4,6 +4,7 @@ import com.music.entity.Comment;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -20,4 +21,8 @@ public interface CommentMapper {
             "WHERE c.music_id = #{musicId} " +
             "ORDER BY c.likes DESC, c.create_time DESC")
     List<Comment> selectByMusicId(Integer musicId);
+
+    //  给热评注入灵魂：点赞数 +1
+    @org.apache.ibatis.annotations.Update("UPDATE music_comment SET likes = likes + 1 WHERE id = #{id}")
+    void incrementLikes(Integer id);
 }
