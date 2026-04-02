@@ -15,11 +15,18 @@ public class CommentController {
     @Autowired
     private CommentMapper commentMapper;
 
-    //  🚀 核心战役：用 Java 组装楼中楼评论树！
-    @GetMapping("/list")
-    public Result<List<Comment>> list(@RequestParam Integer musicId) {
+    //  核心战役：用 Java 组装楼中楼评论树！
+    //  修复白屏：配置双路由，同时兼容 /comment/list/12 和 /comment/list?musicId=12 两种请求！
+    @GetMapping({"/list", "/list/{musicId}"})
+    public Result<List<Comment>> list(
+            @PathVariable(required = false) Integer musicId,
+            @RequestParam(value = "musicId", required = false) Integer queryMusicId) {
+
+        // ️ 智能参数捕获：不管是前端哪种风格发来的 ID，统统完美接住！
+        Integer finalMusicId = musicId != null ? musicId : queryMusicId;
+
         // 1. 查出这首歌的所有评论
-        List<Comment> allComments = commentMapper.selectByMusicId(musicId); // 请确保 Mapper 里有这个按 musicId 查询的方法
+        List<Comment> allComments = commentMapper.selectByMusicId(finalMusicId); 
         
         List<Comment> rootComments = new java.util.ArrayList<>();
         java.util.Map<Integer, Comment> map = new java.util.HashMap<>();
