@@ -87,4 +87,17 @@ public class PlaylistController {
         jdbcTemplate.update("DELETE FROM playlist WHERE id = ?", playlistId);
         return Result.success("歌单已删除");
     }
+
+    /**
+     * 核弹级接口：拉取全站所有用户的歌单，组装歌单广场！
+     * @return 所有歌单列表（包含创建者信息）
+     */
+    @GetMapping("/all")
+    public Result<List<Map<String, Object>>> getAllPlaylists() {
+        // 直接连表查询，把歌单和它的创建者名字一并抓出来！
+        String sql = "SELECT p.*, u.username as creatorName FROM playlist p " +
+                     "LEFT JOIN user_info u ON p.user_id = u.id ORDER BY p.id DESC";
+        List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
+        return Result.success(list);
+    }
 }
