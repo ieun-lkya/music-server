@@ -25,6 +25,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -82,7 +83,7 @@ public class AdminController {
             return Result.success(data);
 
         } catch (Exception e) {
-            log.error("大屏数据查询异常，请检查 SQL 表名 (user, user_likes) 是否与你的数据库表名完全一致：", e);
+            log.error("大屏数据查询异常", e);
             return Result.error("大屏数据获取失败，请查看后端控制台报错");
         }
     }
@@ -103,14 +104,15 @@ public class AdminController {
             }
             Mp3File mp3file = new Mp3File(tempFile.getAbsolutePath());
 
-            String title = file.getOriginalFilename().replace(".mp3", "");
+            // 🚀 核心修复 1：强行剥离 ID3 标签自带的幽灵空格，防止后续 URL 污染！
+            String title = file.getOriginalFilename().replace(".mp3", "").trim();
             String artist = "未知歌手";
             String coverBase64 = "";
 
             if (mp3file.hasId3v2Tag()) {
                 ID3v2 id3v2Tag = mp3file.getId3v2Tag();
-                if (id3v2Tag.getTitle() != null) title = id3v2Tag.getTitle();
-                if (id3v2Tag.getArtist() != null) artist = id3v2Tag.getArtist();
+                if (id3v2Tag.getTitle() != null && !id3v2Tag.getTitle().trim().isEmpty()) title = id3v2Tag.getTitle().trim();
+                if (id3v2Tag.getArtist() != null && !id3v2Tag.getArtist().trim().isEmpty()) artist = id3v2Tag.getArtist().trim();
                 byte[] albumImageData = id3v2Tag.getAlbumImage();
                 if (albumImageData != null) {
                     String mimeType = id3v2Tag.getAlbumImageMimeType();
@@ -131,17 +133,16 @@ public class AdminController {
 
     @GetMapping("/suggestTags")
     public Result<String> suggestTags(@RequestParam String title, @RequestParam(required = false, defaultValue = "未知") String artist) {
-        //  极其规范：直接读取阿里云官方标准的环境变量名！
         String API_KEY = System.getenv("DASHSCOPE_API_KEY");
         if (API_KEY == null || API_KEY.isEmpty()) {
             return Result.error("AI 引擎未授权，请配置 DASHSCOPE_API_KEY");
         }
-        
+
         try {
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(API_KEY); //  使用抓取到的 Key
+            headers.setBearerAuth(API_KEY);
 
             String validTagsStr = "流行,摇滚,民谣,电子,纯音乐,伤感,治愈,励志,轻松,助眠,运动,驾车,雨天,深夜,咖啡馆,工作学习,华语,欧美,日韩,怀旧,爱情,浪漫,节奏控,古风,经典";
             java.util.List<String> VALID_TAGS = java.util.Arrays.asList(validTagsStr.split(","));
@@ -149,7 +150,6 @@ public class AdminController {
             String prompt = String.format(
                     "你是一个极其专业的音乐打标机器。请根据歌曲名称《%s》和演唱者【%s】，挑选出所有符合该歌曲意境的贴切标签（数量不限，宁缺毋滥）。\n" +
                             "【强制候选词库】：%s\n" +
-                            "【最高指令】：你输出的任何一个词，必须完完全全在这个词库中，绝对不允许同义词替换！\n" +
                             "【输出格式】：只输出标签，用英文逗号分隔。绝对禁止输出其他解释说明！",
                     title, artist, validTagsStr
             );
@@ -194,28 +194,30 @@ public class AdminController {
             String checkSql = "SELECT COUNT(*) FROM music_info WHERE title = ? AND artist = ?";
             Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, title, artist);
             if (count != null && count > 0) {
-                log.warn("触发防重机制：拦截了重复的 {}-{}", artist, title);
                 return Result.error("拒绝上传：该歌手的《" + title + "》已存在曲库中！");
             }
 
+            // 🚀 核心修复 2：彻底废弃“歌名-歌手”的危险拼接！直接使用干净的 歌名 + 6位UUID！
+            String cleanTitle = title.replaceAll("\\s+", "").replace("-", "");
+            String safeBaseName = cleanTitle + "_" + UUID.randomUUID().toString().substring(0, 6);
+
             String audioExt = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
-            String audioUrl = ossService.uploadFileWithCustomName(file, "songs/", title + "-" + artist + audioExt);
+            String audioUrl = ossService.uploadFileWithCustomName(file, "songs/", safeBaseName + audioExt);
 
             String coverUrl = "";
             if (coverFile != null && !coverFile.isEmpty()) {
                 String coverExt = coverFile.getOriginalFilename().substring(coverFile.getOriginalFilename().lastIndexOf("."));
-                coverUrl = ossService.uploadFileWithCustomName(coverFile, "covers/", title + "-" + artist + coverExt);
+                coverUrl = ossService.uploadFileWithCustomName(coverFile, "covers/", safeBaseName + coverExt);
             }
 
             String lyricUrl = "";
             if (lyricFile != null && !lyricFile.isEmpty()) {
-                String customLrcName = title + "-" + artist + ".lrc";
-                lyricUrl = ossService.uploadFileWithCustomName(lyricFile, "lyrics/", customLrcName);
+                lyricUrl = ossService.uploadFileWithCustomName(lyricFile, "lyrics/", safeBaseName + ".lrc");
             }
 
             MusicInfo musicInfo = new MusicInfo();
-            musicInfo.setTitle(title);
-            musicInfo.setArtist(artist);
+            musicInfo.setTitle(title.trim());
+            musicInfo.setArtist(artist.trim());
             musicInfo.setTags(tags);
             musicInfo.setAudioUrl(audioUrl);
             musicInfo.setCoverUrl(coverUrl);
@@ -253,24 +255,26 @@ public class AdminController {
         MusicInfo oldMusic = musicService.getById(form.getId().longValue());
         if (oldMusic == null) return Result.error("歌曲不存在");
 
-        String title = form.getTitle() != null ? form.getTitle() : oldMusic.getTitle();
-        String artist = form.getArtist() != null ? form.getArtist() : oldMusic.getArtist();
+        String title = form.getTitle() != null ? form.getTitle().trim() : oldMusic.getTitle().trim();
+
+        // 🚀 核心修复 3：更新时同样使用统一的防弹命名规则！
+        String cleanTitle = title.replaceAll("\\s+", "").replace("-", "");
+        String safeBaseName = cleanTitle + "_" + UUID.randomUUID().toString().substring(0, 6);
 
         if (newCover != null && !newCover.isEmpty()) {
             String ext = newCover.getOriginalFilename().substring(newCover.getOriginalFilename().lastIndexOf("."));
-            form.setCoverUrl(ossService.uploadFileWithCustomName(newCover, "covers/", title + "-" + artist + ext));
+            form.setCoverUrl(ossService.uploadFileWithCustomName(newCover, "covers/", safeBaseName + ext));
             if (oldMusic.getCoverUrl() != null && !oldMusic.getCoverUrl().isEmpty()) ossService.deleteFile(oldMusic.getCoverUrl());
         }
 
         if (newAudio != null && !newAudio.isEmpty()) {
             String ext = newAudio.getOriginalFilename().substring(newAudio.getOriginalFilename().lastIndexOf("."));
-            form.setAudioUrl(ossService.uploadFileWithCustomName(newAudio, "songs/", title + "-" + artist + ext));
+            form.setAudioUrl(ossService.uploadFileWithCustomName(newAudio, "songs/", safeBaseName + ext));
             if (oldMusic.getAudioUrl() != null && !oldMusic.getAudioUrl().isEmpty()) ossService.deleteFile(oldMusic.getAudioUrl());
         }
 
         if (newLyric != null && !newLyric.isEmpty()) {
-            String newLyricUrl = ossService.uploadFileWithCustomName(newLyric, "lyrics/", title + "-" + artist + ".lrc");
-            form.setLyricUrl(newLyricUrl);
+            form.setLyricUrl(ossService.uploadFileWithCustomName(newLyric, "lyrics/", safeBaseName + ".lrc"));
             if (oldMusic.getLyricUrl() != null && !oldMusic.getLyricUrl().isEmpty()) ossService.deleteFile(oldMusic.getLyricUrl());
         }
 
