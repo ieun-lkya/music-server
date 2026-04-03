@@ -189,32 +189,34 @@ public class AdminController {
             @RequestParam("title") String title,
             @RequestParam("artist") String artist,
             @RequestParam("tags") String tags) {
-
+    
         try {
             String checkSql = "SELECT COUNT(*) FROM music_info WHERE title = ? AND artist = ?";
             Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, title, artist);
             if (count != null && count > 0) {
                 return Result.error("拒绝上传：该歌手的《" + title + "》已存在曲库中！");
             }
-
-            // 🚀 核心修复 2：彻底废弃“歌名-歌手”的危险拼接！直接使用干净的 歌名 + 6位UUID！
-            String cleanTitle = title.replaceAll("\\s+", "").replace("-", "");
-            String safeBaseName = cleanTitle + "_" + UUID.randomUUID().toString().substring(0, 6);
-
+    
+            //  终极修复：把歌手名加回来！同时用正则清洗掉空格，用 - 连接！
+            String cleanTitle = title.replaceAll("\\s+", ""); 
+            String cleanArtist = artist.replaceAll("\\s+", "");
+            // 现在的命名格式：黄昏晓 - 王心凌_a1b2c3
+            String safeBaseName = cleanTitle + "-" + cleanArtist + "_" + UUID.randomUUID().toString().substring(0, 6);
+    
             String audioExt = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
             String audioUrl = ossService.uploadFileWithCustomName(file, "songs/", safeBaseName + audioExt);
-
+    
             String coverUrl = "";
             if (coverFile != null && !coverFile.isEmpty()) {
                 String coverExt = coverFile.getOriginalFilename().substring(coverFile.getOriginalFilename().lastIndexOf("."));
                 coverUrl = ossService.uploadFileWithCustomName(coverFile, "covers/", safeBaseName + coverExt);
             }
-
+    
             String lyricUrl = "";
             if (lyricFile != null && !lyricFile.isEmpty()) {
                 lyricUrl = ossService.uploadFileWithCustomName(lyricFile, "lyrics/", safeBaseName + ".lrc");
             }
-
+    
             MusicInfo musicInfo = new MusicInfo();
             musicInfo.setTitle(title.trim());
             musicInfo.setArtist(artist.trim());
@@ -222,7 +224,7 @@ public class AdminController {
             musicInfo.setAudioUrl(audioUrl);
             musicInfo.setCoverUrl(coverUrl);
             musicInfo.setLyricUrl(lyricUrl);
-
+    
             musicService.addMusic(musicInfo);
             return Result.success("发布成功");
         } catch (Exception e) {
@@ -256,10 +258,13 @@ public class AdminController {
         if (oldMusic == null) return Result.error("歌曲不存在");
 
         String title = form.getTitle() != null ? form.getTitle().trim() : oldMusic.getTitle().trim();
-
-        // 🚀 核心修复 3：更新时同样使用统一的防弹命名规则！
-        String cleanTitle = title.replaceAll("\\s+", "").replace("-", "");
-        String safeBaseName = cleanTitle + "_" + UUID.randomUUID().toString().substring(0, 6);
+        //  终极修复：把误删的获取歌手名逻辑加回来！
+        String artist = form.getArtist() != null ? form.getArtist().trim() : oldMusic.getArtist().trim();
+        
+        //  终极修复：更新时同样使用 [歌名 - 歌手_随机码] 的完美格式！
+        String cleanTitle = title.replaceAll("\\s+", ""); 
+        String cleanArtist = artist.replaceAll("\\s+", "");
+        String safeBaseName = cleanTitle + "-" + cleanArtist + "_" + UUID.randomUUID().toString().substring(0, 6);
 
         if (newCover != null && !newCover.isEmpty()) {
             String ext = newCover.getOriginalFilename().substring(newCover.getOriginalFilename().lastIndexOf("."));
