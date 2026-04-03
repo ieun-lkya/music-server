@@ -46,4 +46,8 @@ public interface MusicMapper {
     // 8. 🚀 抓取全站 Top 10 热歌榜！
     @org.apache.ibatis.annotations.Select("SELECT * FROM music_info ORDER BY play_count DESC LIMIT 10")
     List<MusicInfo> selectTopMusic();
+
+    // 9. 🔥 全局搜索引擎：同时检索歌名、歌手和标签！
+    @org.apache.ibatis.annotations.Select("SELECT * FROM music_info WHERE title LIKE CONCAT('%',#{keyword},'%') OR artist LIKE CONCAT('%',#{keyword},'%') OR tags LIKE CONCAT('%',#{keyword},'%') ORDER BY id DESC")
+    List<MusicInfo> searchMusic(String keyword);
 }

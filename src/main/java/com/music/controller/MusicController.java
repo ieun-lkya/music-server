@@ -89,4 +89,13 @@ public class MusicController {
     public Result<List<MusicInfo>> getTopMusic() {
         return Result.success(musicMapper.selectTopMusic());
     }
+
+    //  🔥 全站搜索接口
+    @GetMapping("/search")
+    public Result<List<MusicInfo>> search(@RequestParam String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return Result.success(new java.util.ArrayList<>());
+        }
+        return Result.success(musicMapper.searchMusic(keyword.trim()));
+    }
 }
