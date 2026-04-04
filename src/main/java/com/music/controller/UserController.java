@@ -73,4 +73,18 @@ public class UserController {
         List<MusicInfo> likedList = userMapper.getLikedMusicList(userId);
         return Result.success(likedList);
     }
+
+    // --- 【3. 用户名片更新系统】 ---
+
+    // 🚀 开放给 C 端的名片更新接口
+    @PostMapping("/update")
+    public Result<User> updateUserInfo(@RequestBody User user) {
+        if (user.getId() == null) return Result.error("用户 ID 异常");
+        
+        userMapper.updateUser(user);
+        // 更新完后，查出最新数据返回给前端刷新状态！
+        User updatedUser = userMapper.selectById(user.getId());
+        updatedUser.setPassword(null); // 极其严谨的数据安全，绝不把密码传回前端！
+        return Result.success(updatedUser);
+    }
 }

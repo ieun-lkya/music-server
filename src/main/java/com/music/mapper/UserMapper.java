@@ -34,4 +34,12 @@ public interface UserMapper {
     // 6. 🚀 统计用户总数 (用于 Admin 大屏)
     @Select("SELECT COUNT(*) FROM user_info")
     long countUser();
+
+    // 7. 核心：允许用户更新自己的名片
+    @org.apache.ibatis.annotations.Update("UPDATE user_info SET username = #{username}, avatar = #{avatar}, signature = #{signature} WHERE id = #{id}")
+    void updateUser(com.music.entity.User user);
+
+    // 8. 顺手加个按 ID 查询，用来返回最新数据
+    @org.apache.ibatis.annotations.Select("SELECT * FROM user_info WHERE id = #{id}")
+    com.music.entity.User selectById(Integer id);
 }
