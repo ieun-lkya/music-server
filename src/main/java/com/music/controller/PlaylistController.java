@@ -3,135 +3,65 @@ package com.music.controller;
 import com.music.common.Result;
 import com.music.mapper.PlaylistMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 
-/**
- * 云端歌单控制器 - "音乐收藏夹"
- * 提供用户创建、管理个人歌单的功能
- */
 @RestController
 @RequestMapping("/playlist")
 public class PlaylistController {
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
-
+    //  完美注入！抛弃 JdbcTemplate！
     @Autowired
     private PlaylistMapper playlistMapper;
 
-    /**
-     * 创建个人歌单
-     * @param userId 用户 ID
-     * @param name 歌单名称
-     * @return 操作结果
-     */
     @PostMapping("/create")
     public Result<String> createPlaylist(@RequestParam Long userId, @RequestParam String name) {
-        jdbcTemplate.update("INSERT INTO playlist(user_id, name) VALUES(?, ?)", userId, name);
+        playlistMapper.createPlaylist(userId, name);
         return Result.success("歌单创建成功");
     }
 
-    /**
-     * 获取用户的所有歌单列表
-     * @param userId 用户 ID
-     * @return 用户的歌单列表
-     */
     @GetMapping("/list")
     public Result<List<Map<String, Object>>> getUserPlaylists(@RequestParam Long userId) {
-        List<Map<String, Object>> list = jdbcTemplate.queryForList(
-            "SELECT * FROM playlist WHERE user_id = ? ORDER BY create_time DESC", 
-            userId
-        );
-        return Result.success(list);
+        return Result.success(playlistMapper.getUserPlaylists(userId));
     }
 
-    /**
-     * 添加歌曲到歌单
-     * @param playlistId 歌单 ID
-     * @param musicId 音乐 ID
-     * @return 操作结果
-     */
     @PostMapping("/addMusic")
     public Result<String> addMusicToPlaylist(@RequestParam Long playlistId, @RequestParam Long musicId) {
-        // INSERT IGNORE 避免重复添加
-        jdbcTemplate.update(
-            "INSERT IGNORE INTO playlist_music(playlist_id, music_id) VALUES(?, ?)", 
-            playlistId, musicId
-        );
+        playlistMapper.addMusicToPlaylist(playlistId, musicId);
         return Result.success("已添加到云端歌单");
     }
 
-    /**
-     * 获取歌单中的所有音乐
-     * @param playlistId 歌单 ID
-     * @return 歌单中的音乐列表
-     */
     @GetMapping("/musicList")
     public Result<List<Map<String, Object>>> getPlaylistMusic(@RequestParam Long playlistId) {
-        String sql = "SELECT m.* FROM music_info m " +
-                     "INNER JOIN playlist_music pm ON m.id = pm.music_id " +
-                     "WHERE pm.playlist_id = ? " +
-                     "ORDER BY pm.create_time DESC";
-        return Result.success(jdbcTemplate.queryForList(sql, playlistId));
+        return Result.success(playlistMapper.getPlaylistMusic(playlistId));
     }
 
-    /**
-     * 删除歌单
-     * @param playlistId 歌单 ID
-     * @return 操作结果
-     */
     @DeleteMapping("/delete")
     public Result<String> deletePlaylist(@RequestParam Long playlistId) {
-        // 先删除关联表数据，再删除歌单本身
-        jdbcTemplate.update("DELETE FROM playlist_music WHERE playlist_id = ?", playlistId);
-        jdbcTemplate.update("DELETE FROM playlist WHERE id = ?", playlistId);
+        playlistMapper.deletePlaylistMusic(playlistId); // 先删关联
+        playlistMapper.deletePlaylist(playlistId);      // 再删本体
         return Result.success("歌单已删除");
     }
 
-    /**
-     * 核弹级接口：拉取全站所有用户的歌单，组装歌单广场！
-     * （利用子查询强行拉取第一首歌的封面作为歌单封面）
-     * @return 所有歌单列表（包含创建者信息和封面）
-     */
     @GetMapping("/all")
     public Result<List<Map<String, Object>>> getAllPlaylists() {
-        List<Map<String, Object>> list = playlistMapper.getAllPlaylists();
-        return Result.success(list);
+        return Result.success(playlistMapper.getAllPlaylists());
     }
 
-    /**
-     * 收藏歌单
-     * @param userId 用户 ID
-     * @param playlistId 歌单 ID
-     * @return 操作结果
-     */
     @PostMapping("/collect")
     public Result<String> collectPlaylist(@RequestParam Integer userId, @RequestParam Integer playlistId) {
         playlistMapper.collectPlaylist(userId, playlistId);
         return Result.success("收藏成功");
     }
 
-    /**
-     * 取消收藏歌单
-     * @param userId 用户 ID
-     * @param playlistId 歌单 ID
-     * @return 操作结果
-     */
     @PostMapping("/uncollect")
     public Result<String> uncollectPlaylist(@RequestParam Integer userId, @RequestParam Integer playlistId) {
         playlistMapper.uncollectPlaylist(userId, playlistId);
         return Result.success("取消收藏");
     }
 
-    /**
-     * 获取我的收藏歌单列表
-     * @param userId 用户 ID
-     * @return 收藏的歌单列表（附带第一首歌封面）
-     */
     @GetMapping("/collected/{userId}")
     public Result<List<Map<String, Object>>> getCollectedPlaylists(@PathVariable Integer userId) {
         return Result.success(playlistMapper.getCollectedPlaylists(userId));
