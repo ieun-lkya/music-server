@@ -1,6 +1,7 @@
 package com.music.controller;
 
 import com.music.common.Result;
+import com.music.mapper.PlaylistMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,9 @@ public class PlaylistController {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private PlaylistMapper playlistMapper;
 
     /**
      * 创建个人歌单
@@ -90,14 +94,46 @@ public class PlaylistController {
 
     /**
      * 核弹级接口：拉取全站所有用户的歌单，组装歌单广场！
-     * @return 所有歌单列表（包含创建者信息）
+     * （利用子查询强行拉取第一首歌的封面作为歌单封面）
+     * @return 所有歌单列表（包含创建者信息和封面）
      */
     @GetMapping("/all")
     public Result<List<Map<String, Object>>> getAllPlaylists() {
-        // 直接连表查询，把歌单和它的创建者名字一并抓出来！
-        String sql = "SELECT p.*, u.username as creatorName FROM playlist p " +
-                     "LEFT JOIN user_info u ON p.user_id = u.id ORDER BY p.id DESC";
-        List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
+        List<Map<String, Object>> list = playlistMapper.getAllPlaylists();
         return Result.success(list);
+    }
+
+    /**
+     * 收藏歌单
+     * @param userId 用户 ID
+     * @param playlistId 歌单 ID
+     * @return 操作结果
+     */
+    @PostMapping("/collect")
+    public Result<String> collectPlaylist(@RequestParam Integer userId, @RequestParam Integer playlistId) {
+        playlistMapper.collectPlaylist(userId, playlistId);
+        return Result.success("收藏成功");
+    }
+
+    /**
+     * 取消收藏歌单
+     * @param userId 用户 ID
+     * @param playlistId 歌单 ID
+     * @return 操作结果
+     */
+    @PostMapping("/uncollect")
+    public Result<String> uncollectPlaylist(@RequestParam Integer userId, @RequestParam Integer playlistId) {
+        playlistMapper.uncollectPlaylist(userId, playlistId);
+        return Result.success("取消收藏");
+    }
+
+    /**
+     * 获取我的收藏歌单列表
+     * @param userId 用户 ID
+     * @return 收藏的歌单列表（附带第一首歌封面）
+     */
+    @GetMapping("/collected/{userId}")
+    public Result<List<Map<String, Object>>> getCollectedPlaylists(@PathVariable Integer userId) {
+        return Result.success(playlistMapper.getCollectedPlaylists(userId));
     }
 }
