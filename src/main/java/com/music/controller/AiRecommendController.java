@@ -13,11 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -120,7 +116,7 @@ public class AiRecommendController {
     @GetMapping("/generatePlaylists")
     public Result<List<Map<String, Object>>> generatePlaylists() {
         String API_KEY = System.getenv("DASHSCOPE_API_KEY");
-        if (API_KEY == null || API_KEY.isEmpty()) return Result.error("请配置 DASHSCOPE_API_KEY");
+        if (API_KEY == null || API_KEY.isEmpty()) return Result.error("请配置环境变量 DASHSCOPE_API_KEY");
 
         try {
             List<Map<String, Object>> allMusicInfo = jdbcTemplate.queryForList("SELECT id, title, artist FROM music_info");
@@ -131,37 +127,30 @@ public class AiRecommendController {
                 musicCatalog.append(m.get("id")).append(". 《").append(m.get("title")).append("》 - ").append(m.get("artist")).append("\n");
             }
 
+            //  核心机制：注入极其抽象的随机时空指纹，强制打碎 LLM 的缓存倾向
+            String timeFingerprint = UUID.randomUUID().toString() + "-" + System.nanoTime();
+
+            //  终极 Prompt：禁止任何限制，要求深度逻辑输出
+            String prompt = String.format(
+                    "你是一个极具灵魂深度和音乐审美的AI主理人。当前随机时空指纹为：【%s】。\n" +
+                    "请阅读下方的【曲库全集】：\n%s\n" +
+                    "【你的使命】：\n" +
+                    "1. 请完全摆脱任何已知的音乐分类模板（如赛博、治愈等陈词滥调），利用你庞大的知识图谱，**自发创造** 4 个独特的歌单主题。\n" +
+                    "2. 为每个歌单撰写一个【分类依据(basis)】：深层剖析这几首歌在编曲、歌词意境、或者某种抽象情感上的内在联系，告诉听众你为什么这样分类（不少于40字）。\n" +
+                    "3. 挑选 3-6 首歌曲 ID 放入 ids 数组。\n" +
+                    "【严格格式】：必须在 <result> 标签内返回纯净 JSON 数组，包含 name, description, tags, basis, ids 字段。",
+                    timeFingerprint, musicCatalog.toString()
+            );
+
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(API_KEY);
 
-            //  1. 彻底砸碎限制！不给任何主题池，不给任何锚点！
-            //  2. 靠极高强度的 Prompt 逼迫它每次生成绝不重复的灵魂神作！
-            String prompt = String.format(
-                    "你是一个极度感性、拥有顶级文学素养的AI音乐制作人。请阅读下方的【专属曲库菜单】（行首数字是歌曲 ID）：\n%s\n" +
-                    "【核心任务】：不要拘泥于任何世俗的音乐分类！请凭借你无限的想象力，结合人类的情绪碎片、抽象画面、或者某个极具电影感的瞬间，\n" +
-                    "**完全自主地凭空创造出 4 个毫不相干、名字极具诗意和画面感的音乐歌单主题**。\n" +
-                    "（警告：每次生成必须完全随机、颠覆想象，绝对不允许使用你以前生成过的名字！）\n" +
-                    "然后，请从上述曲库中，为每个你创造的主题精心挑选 2 到 6 首最能引发共鸣的歌曲 ID。\n" +
-                    "【输出格式要求 - 极其严格】：\n" +
-                    "你必须且只能把最终结果放在 <result> 和 </result> 标签内。\n" +
-                    "标签内部必须是一段纯净合法的 JSON 数组，绝对不要掺杂任何多余文字或 Markdown 标记！\n" +
-                    "规范范例：\n" +
-                    "<result>\n" +
-                    "[\n" +
-                    "  {\"name\": \"你创造的绝美且未知的歌单名1\", \"ids\": [1, 4, 7]},\n" +
-                    "  {\"name\": \"你创造的绝美且未知的歌单名2\", \"ids\": [2, 5]}\n" +
-                    "]\n" +
-                    "</result>",
-                    musicCatalog.toString()
-            );
-
             Map<String, Object> requestBodyMap = new HashMap<>();
             requestBodyMap.put("model", "qwen-plus");
-            //  3. 维持 0.95 的高温度值和 0.6 的惩罚机制，让它的每次脑电波都在不同象限跳跃！
-            requestBodyMap.put("temperature", 0.95);
-            requestBodyMap.put("presence_penalty", 0.6);
+            requestBodyMap.put("temperature", 1.0); //  满额创造力，杜绝重复！
+            requestBodyMap.put("top_p", 0.9);
 
             List<Map<String, String>> messages = new ArrayList<>();
             Map<String, String> systemMsg = new HashMap<>();
@@ -179,7 +168,6 @@ public class AiRecommendController {
             String aiResponse = root.path("choices").get(0).path("message").path("content").asText().trim();
             log.info("AI 量子歌单生成结果:\n{}", aiResponse);
 
-            // 暴力剥离非 JSON 字符串
             Matcher matcher = Pattern.compile("<result>([\\s\\S]*?)</result>", Pattern.CASE_INSENSITIVE).matcher(aiResponse);
             String jsonContent = matcher.find() ? matcher.group(1).trim() : aiResponse;
             jsonContent = jsonContent.replaceAll("```json", "").replaceAll("```", "").trim();
@@ -188,38 +176,36 @@ public class AiRecommendController {
             List<Map<String, Object>> finalPlaylists = new ArrayList<>();
             
             if (playlistsNode.isArray()) {
-                int index = 1;
                 for (JsonNode node : playlistsNode) {
-                    String name = node.path("name").asText();
-                    JsonNode idsNode = node.path("ids");
                     List<Integer> validIds = new ArrayList<>();
-                    if (idsNode.isArray()) {
-                        for (JsonNode idNode : idsNode) validIds.add(idNode.asInt());
+                    if (node.path("ids").isArray()) {
+                        for (JsonNode idNode : node.path("ids")) validIds.add(idNode.asInt());
                     }
+                    if (validIds.isEmpty()) continue;
+
+                    String inSql = String.join(",", Collections.nCopies(validIds.size(), "?"));
+                    String sql = String.format("SELECT id, title, artist, cover_url AS coverUrl, audio_url AS audioUrl, lyric_url AS lyricUrl FROM music_info WHERE id IN (%s)", inSql);
+                    List<Map<String, Object>> songs = jdbcTemplate.queryForList(sql, validIds.toArray());
                     
-                    if (!validIds.isEmpty()) {
-                        // 组装真实歌曲数据
-                        String inSql = String.join(",", Collections.nCopies(validIds.size(), "?"));
-                        String sql = String.format("SELECT id, title, artist, cover_url AS coverUrl, audio_url AS audioUrl, lyric_url AS lyricUrl FROM music_info WHERE id IN (%s)", inSql);
-                        List<Map<String, Object>> songs = jdbcTemplate.queryForList(sql, validIds.toArray());
-                        
-                        if (!songs.isEmpty()) {
-                            Map<String, Object> pl = new HashMap<>();
-                            pl.put("id", "ai_quantum_" + System.currentTimeMillis() + "_" + index++);
-                            pl.put("name", name); // AI 创造的绝美名字！
-                            pl.put("creatorName", "Echo AI 引擎");
-                            pl.put("isAi", true); // 打上智能体烙印
-                            pl.put("songs", songs);
-                            pl.put("coverUrl", songs.get(0).get("coverUrl")); // 自动抽取第一首歌作封面！
-                            finalPlaylists.add(pl);
-                        }
+                    if (!songs.isEmpty()) {
+                        Map<String, Object> pl = new HashMap<>();
+                        pl.put("id", "ai_" + System.currentTimeMillis() + "_" + Math.random());
+                        pl.put("name", node.path("name").asText());
+                        pl.put("description", node.path("description").asText());
+                        pl.put("basis", node.path("basis").asText()); //  注入分类依据！
+                        pl.put("tags", node.path("tags").asText());
+                        pl.put("creatorName", "Echo AI 引擎");
+                        pl.put("isAi", true);
+                        pl.put("songs", songs);
+                        pl.put("coverUrl", songs.get(0).get("coverUrl"));
+                        finalPlaylists.add(pl);
                     }
                 }
             }
             return Result.success(finalPlaylists);
         } catch (Exception e) {
             log.error("AI 歌单生成异常", e);
-            return Result.error("AI 引擎正在思考宇宙终极问题，请稍后再试");
+            return Result.error("AI 引擎正在星际漫游，请稍后再试");
         }
     }
 }
