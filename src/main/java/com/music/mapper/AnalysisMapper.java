@@ -16,11 +16,11 @@ public interface AnalysisMapper {
             "GROUP BY DATE_FORMAT(create_time, '%Y/%m/%d')")
     List<Map<String, Object>> getHeatmapData(Integer userId);
 
-    //  核心 SQL 2：联表查询统计用户的偏好标签 (雷达图)
-    @Select("SELECT m.style_tag as name, COUNT(*) as value " +
-            "FROM user_play_log l JOIN music m ON l.music_id = m.id " +
-            "WHERE l.user_id = #{userId} " +
-            "GROUP BY m.style_tag LIMIT 6")
+    //  核心修复 SQL 2：表名改为 music_info，字段名改为 tags！！！
+    @Select("SELECT m.tags as name, COUNT(*) as value " +
+            "FROM user_play_log l JOIN music_info m ON l.music_id = m.id " +
+            "WHERE l.user_id = #{userId} AND m.tags IS NOT NULL AND m.tags != '' " +
+            "GROUP BY m.tags LIMIT 6")
     List<Map<String, Object>> getRadarData(Integer userId);
     
     //  核心 SQL 3：插入一条听歌流水
