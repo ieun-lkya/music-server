@@ -41,5 +41,5 @@ public interface UserMapper {
 
     // 8. 顺手加个按 ID 查询，用来返回最新数据
     @org.apache.ibatis.annotations.Select("SELECT * FROM user_info WHERE id = #{id}")
-    com.music.entity.User selectById(Integer id);
+    com.music.entity.User selectById(Long id);
 }

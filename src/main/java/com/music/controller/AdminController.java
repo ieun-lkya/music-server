@@ -197,9 +197,9 @@ public class AdminController {
                 return Result.error("拒绝上传：该歌手的《" + title + "》已存在曲库中！");
             }
     
-            //  终极修复：把歌手名加回来！同时用正则清洗掉空格，用 - 连接！
-            String cleanTitle = title.replaceAll("\\s+", ""); 
-            String cleanArtist = artist.replaceAll("\\s+", "");
+            //  终极修复：把歌手名加回来！同时用史诗级正则过滤大阵清洗特殊字符！
+            String cleanTitle = title.replaceAll("[^a-zA-Z0-9\\u4e00-\\u9fa5]", ""); 
+            String cleanArtist = artist.replaceAll("[^a-zA-Z0-9\\u4e00-\\u9fa5]", "");
             // 现在的命名格式：黄昏晓 - 王心凌_a1b2c3
             String safeBaseName = cleanTitle + "-" + cleanArtist + "_" + UUID.randomUUID().toString().substring(0, 6);
     
@@ -262,8 +262,8 @@ public class AdminController {
         String artist = form.getArtist() != null ? form.getArtist().trim() : oldMusic.getArtist().trim();
         
         //  终极修复：更新时同样使用 [歌名 - 歌手_随机码] 的完美格式！
-        String cleanTitle = title.replaceAll("\\s+", ""); 
-        String cleanArtist = artist.replaceAll("\\s+", "");
+        String cleanTitle = title.replaceAll("[^a-zA-Z0-9\\u4e00-\\u9fa5]", ""); 
+        String cleanArtist = artist.replaceAll("[^a-zA-Z0-9\\u4e00-\\u9fa5]", "");
         String safeBaseName = cleanTitle + "-" + cleanArtist + "_" + UUID.randomUUID().toString().substring(0, 6);
 
         if (newCover != null && !newCover.isEmpty()) {
