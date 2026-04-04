@@ -57,20 +57,22 @@ public class AiRecommendController {
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(API_KEY);
 
-            //  神级 Prompt：逼迫大模型发挥创造力，并输出极度规范的 JSON！
+            //  1. 彻底砸碎限制！不给任何主题池，不给任何锚点！
+            //  2. 靠极高强度的 Prompt 逼迫它每次生成绝不重复的灵魂神作！
             String prompt = String.format(
-                    "你是一个极具创造力的AI音乐制作人。请阅读下方的【专属曲库菜单】（行首数字是歌曲 ID）：\n%s\n" +
-                    "【核心任务】：发挥你庞大的知识图谱和极致的想象力，结合年轻人的情感和极其具象的场景（如：赛博失眠夜、橘子汽水微风、末日公路等），\n" +
-                    "**为你自己自由创造出 4 个完全不同、极具情感画面感的音乐歌单主题**。\n" +
-                    "并且，必须从上述曲库中，为每个主题精心挑选 2 到 6 首最契合的歌曲 ID。\n" +
+                    "你是一个极度感性、拥有顶级文学素养的AI音乐制作人。请阅读下方的【专属曲库菜单】（行首数字是歌曲 ID）：\n%s\n" +
+                    "【核心任务】：不要拘泥于任何世俗的音乐分类！请凭借你无限的想象力，结合人类的情绪碎片、抽象画面、或者某个极具电影感的瞬间，\n" +
+                    "**完全自主地凭空创造出 4 个毫不相干、名字极具诗意和画面感的音乐歌单主题**。\n" +
+                    "（警告：每次生成必须完全随机、颠覆想象，绝对不允许使用你以前生成过的名字！）\n" +
+                    "然后，请从上述曲库中，为每个你创造的主题精心挑选 2 到 6 首最能引发共鸣的歌曲 ID。\n" +
                     "【输出格式要求 - 极其严格】：\n" +
                     "你必须且只能把最终结果放在 <result> 和 </result> 标签内。\n" +
-                    "标签内部必须是一段纯净合法的 JSON 数组，绝对不要掺杂任何 Markdown 标记（如 ```json）或多余解释！\n" +
+                    "标签内部必须是一段纯净合法的 JSON 数组，绝对不要掺杂任何多余文字或 Markdown 标记！\n" +
                     "规范范例：\n" +
                     "<result>\n" +
                     "[\n" +
-                    "  {\"name\": \"霓虹灯下的呢喃\", \"ids\": [1, 4, 7]},\n" +
-                    "  {\"name\": \"暴雨将至的静谧\", \"ids\": [2, 5]}\n" +
+                    "  {\"name\": \"你创造的绝美且未知的歌单名1\", \"ids\": [1, 4, 7]},\n" +
+                    "  {\"name\": \"你创造的绝美且未知的歌单名2\", \"ids\": [2, 5]}\n" +
                     "]\n" +
                     "</result>",
                     musicCatalog.toString()
@@ -78,6 +80,10 @@ public class AiRecommendController {
 
             Map<String, Object> requestBodyMap = new HashMap<>();
             requestBodyMap.put("model", "qwen-plus");
+            //  3. 维持 0.95 的高温度值和 0.6 的惩罚机制，让它的每次脑电波都在不同象限跳跃！
+            requestBodyMap.put("temperature", 0.95);
+            requestBodyMap.put("presence_penalty", 0.6);
+
             List<Map<String, String>> messages = new ArrayList<>();
             Map<String, String> systemMsg = new HashMap<>();
             systemMsg.put("role", "system");
