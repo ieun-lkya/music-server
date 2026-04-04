@@ -9,10 +9,10 @@ import java.util.Map;
 
 @Mapper
 public interface AnalysisMapper {
-    //  核心 SQL 1：按天聚合过去 84 天的听歌数量 (热力图)
+    //  核心修改：把 84 DAY 改成 28 DAY (4周)
     @Select("SELECT DATE_FORMAT(create_time, '%Y/%m/%d') as date, COUNT(*) as count " +
             "FROM user_play_log " +
-            "WHERE user_id = #{userId} AND create_time >= DATE_SUB(CURDATE(), INTERVAL 84 DAY) " +
+            "WHERE user_id = #{userId} AND create_time >= DATE_SUB(CURDATE(), INTERVAL 28 DAY) " +
             "GROUP BY DATE_FORMAT(create_time, '%Y/%m/%d')")
     List<Map<String, Object>> getHeatmapData(Integer userId);
 
