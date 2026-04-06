@@ -31,6 +31,8 @@ public class UserController {
         }
         // 给个默认头像
         user.setAvatar("https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png");
+        // 新增：给刚注册的用户发一个随机网名
+        user.setNickname("音乐达人_" + (System.currentTimeMillis() % 10000)); 
         userMapper.insertUser(user);
         log.info("====== 新用户注册成功: {} ======", user.getUsername());
         return Result.success("注册成功，请登录！");

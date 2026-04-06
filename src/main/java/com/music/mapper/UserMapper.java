@@ -13,7 +13,7 @@ public interface UserMapper {
     User findByUsername(String username);
 
     // 2. 注册新用户
-    @Insert("INSERT INTO user_info(username, password, avatar) VALUES(#{username}, #{password}, #{avatar})")
+    @Insert("INSERT INTO user_info(username, password, nickname, avatar) VALUES(#{username}, #{password}, #{nickname}, #{avatar})")
     void insertUser(User user);
 
     // 3. 收藏歌曲 (忽略重复冲突)
@@ -36,15 +36,15 @@ public interface UserMapper {
     long countUser();
 
     // 7. 核心：允许用户更新自己的名片
-    @org.apache.ibatis.annotations.Update("UPDATE user_info SET username = #{username}, avatar = #{avatar}, signature = #{signature} WHERE id = #{id}")
+    @org.apache.ibatis.annotations.Update("UPDATE user_info SET nickname = #{nickname}, avatar = #{avatar}, signature = #{signature} WHERE id = #{id}")
     void updateUser(com.music.entity.User user);
 
     // 8. 顺手加个按 ID 查询，用来返回最新数据
     @org.apache.ibatis.annotations.Select("SELECT * FROM user_info WHERE id = #{id}")
     com.music.entity.User selectById(Long id);
 
-    // 9. 新增：根据用户名模糊搜索用户 (类似 QQ 音乐搜人)
+    // 9. 新增：根据用户名或网名模糊搜索用户 (类似 QQ 音乐搜人)
     // 注意：绝对不要 SELECT password 返回给前端！
-    @Select("SELECT id, username, avatar, signature, create_time FROM user_info WHERE username LIKE CONCAT('%', #{keyword}, '%')")
+    @Select("SELECT id, username, nickname, avatar, signature, create_time FROM user_info WHERE username LIKE CONCAT('%', #{keyword}, '%') OR nickname LIKE CONCAT('%', #{keyword}, '%')")
     List<User> searchUsers(@Param("keyword") String keyword);
 }
