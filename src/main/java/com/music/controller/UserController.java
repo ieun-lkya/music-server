@@ -87,4 +87,20 @@ public class UserController {
         updatedUser.setPassword(null); // 极其严谨的数据安全，绝不把密码传回前端！
         return Result.success(updatedUser);
     }
+
+    // --- 【4. 社交/搜索系统】 ---
+
+    @GetMapping("/search")
+    public Result<List<User>> searchUsers(@RequestParam("keyword") String keyword) {
+        // 1. 极其严谨的判空拦截
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return Result.error("搜索关键词不能为空");
+        }
+        
+        // 2. 调用 Mapper 的模糊查询引擎
+        List<User> users = userMapper.searchUsers(keyword.trim());
+        
+        // 3. 返回安全脱敏后的用户列表给前端
+        return Result.success(users);
+    }
 }

@@ -42,4 +42,9 @@ public interface UserMapper {
     // 8. 顺手加个按 ID 查询，用来返回最新数据
     @org.apache.ibatis.annotations.Select("SELECT * FROM user_info WHERE id = #{id}")
     com.music.entity.User selectById(Long id);
+
+    // 9. 新增：根据用户名模糊搜索用户 (类似 QQ 音乐搜人)
+    // 注意：绝对不要 SELECT password 返回给前端！
+    @Select("SELECT id, username, avatar, signature, create_time FROM user_info WHERE username LIKE CONCAT('%', #{keyword}, '%')")
+    List<User> searchUsers(@Param("keyword") String keyword);
 }
